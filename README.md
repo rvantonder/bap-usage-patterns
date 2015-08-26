@@ -33,7 +33,7 @@ Note: `Tid.(!"@main")` looks for a function called `main`. Your program needs to
 
 > What if I don't want all of the IR in my CFG, but rather nodes and edges labeled with identifiers?
 
-```
+```ocaml
   let program = Project.program project in
   Option.(Term.find sub_t program Tid.(!"@main") >>= fun main_sub ->
           let string_of_node n = sprintf "\"\\%s\""
