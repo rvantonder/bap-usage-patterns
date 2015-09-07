@@ -2,6 +2,21 @@
 
 You can substitute the following patterns in the `driver.ml` and run it in with the vanilla `ocaml` interpreter (after installing bap).
 
+## IR
+
+> How do I output the BAP IR of a specific function (a.k.a. subroutine)?
+
+```ocaml
+let program = Project.program project in
+let main_sub = Term.find sub_t program Tid.(!"@main") in (** Find the subroutine called 'main' *)
+begin
+  match main_sub with
+  | Some sub -> Format.printf "%s\n" (Sub.to_string sub)
+  | None -> Format.printf "Could not find the subroutine\n"
+end;
+  return ()
+```
+
 ## Pretty graphs
 
 > How do I output my program's callgraph in dot format?
@@ -50,7 +65,7 @@ Note: `Tid.(!"@main")` looks for a function called `main`. Your program needs to
 
 Note: here we use `Sub.to_graph`, and the appropriate types for labels. See bap documentation for why you might want this instead.
 
-## Graphs
+## Graph Library
 
 > How do I find strongly connected components in my program?
 
