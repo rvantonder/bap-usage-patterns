@@ -12,7 +12,7 @@ let string_of_node n = sprintf "%S" @@ Tid.name @@ Graphlib.Callgraph.Node.label
 Graphlib.to_dot (module Graphlib.Callgraph) ~string_of_node ~filename:"callgraph.dot" callgraph;
 ```
 
-![](/images/callgraph.png)
+<img src=/images/callgraph.png width=300 /><br>
 
 > How do I output the CFG of of "main" in dot format?
 
@@ -27,7 +27,8 @@ let program = Project.program project in
             ~filename:"main.dot" @@ Sub.to_cfg main_sub; Some main_sub)
   |> Pervasives.ignore;
 ```
-![](/images/main.png)
+
+<img src=/images/main.png width=300 /><br>
 
 Note: `Tid.(!"@main")` looks for a function called `main`. Your program needs to be compiled with debugging symbols, or you need to use the `--use-ida` option if you what to use this notation. Alternatively, use `Tid.(!"@sub_400440")` where `400440` corresponds to the address (in hex) of your function (for example, entry point).
 
@@ -45,7 +46,7 @@ Note: `Tid.(!"@main")` looks for a function called `main`. Your program needs to
   |> Pervasives.ignore;
 ```
 
-![](/images/tid_only_graph.png)
+<img src=/images/tid_only_graph.png height=200 /><br>
 
 Note: here we use `Sub.to_graph`, and the appropriate types for labels. See bap documentation for why you might want this instead.
 
