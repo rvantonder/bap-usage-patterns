@@ -1,6 +1,6 @@
 # Bap Usage Patterns
 
-You can substitute the following patterns in the `driver.ml` and run it in with the vanilla `ocaml` interpreter (after installing bap).
+You can substitute the following patterns in `driver.ml` and run it with `run-on-example.sh` (after installing bap).
 
 ## Pretty graphs
 
@@ -156,27 +156,46 @@ In BAP, you can manipulate `Term`s in the IR in a number of ways. One of those i
   Format.printf "%a\n" Sub.pp new_sub;
 ```
 
-Result:
+Result: (`test/example`)
 ```
-000000ad: argc :: in u32 = 0x1:32
-00000032:
-00000033: base_123 := SP
-00000034: mem := mem with [base_123 - 0x4:32, el]:u32 <- LR
-00000035: mem := mem with [base_123 - 0x8:32, el]:u32 <- R11
-00000036: SP := SP - 0x8:32
-00000037: R11 := SP + 0x4:32
-00000038: SP := SP - 0x8:32
-00000039: LR := 0x843C:32
-0000003a: call @foo with return %0000003b
+00000161: sub new_main(argc)
+00000160: argc :: in u32 = 0x1:32
+000000a0: 
+000000a1: RSP := RSP - 0x8:64
+000000a2: mem64 := mem64 with [RSP, el]:u64 <- RBP
+000000a3: RBP := RSP
+000000a4: t_114 := RSP
+000000a5: RSP := RSP - 0x10:64
+000000a6: CF := t_114 < 0x10:64
+000000a7: OF := high:1[(t_114 ^ 0x10:64) & (t_114 ^ RSP)]
+000000a8: AF := (((RSP ^ t_114) ^ 0x10:64) & 0x10:64) = 0x10:64
+000000a9: PF := ~(low:1[let acc_115 = (RSP >> 0x4:64) ^ RSP in
+let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
+(acc_115 >> 0x1:64) ^ acc_115])
+000000aa: SF := high:1[RSP]
+000000ab: ZF := RSP = 0x0:64
+000000ac: mem64 := mem64 with [RBP - 0x8:64, el]:u32 <- 0x0:32
+000000ad: RAX := pad:64[mem64[RBP - 0x8:64, el]:u32]
+000000ae: RDI := pad:64[low:32[RAX]]
+000000af: RSP := RSP - 0x8:64
+000000b0: mem64 := mem64 with [RSP, el]:u64 <- 0x4005A2:64
+000000b1: call @f with return %000000b2
 
-0000003b:
-0000003c: R3 := mem[R11 - 0x8:32, el]:u32
-0000003d: R3 := R3 + 0x1:32
-0000003e: mem := mem with [R11 - 0x8:32, el]:u32 <- R3
-0000003f: R0 := R3
-00000040: SP := R11 - 0x4:32
-00000041: base_382 := SP
-00000042: R11 := mem[base_382, el]:u32
-00000043: SP := SP + 0x8:32
-00000044: goto mem[base_382 + 0x4:32, el]:u32000000ad: argc :: in u32 = 0x1:32
+000000b2: 
+000000b3: mem64 := mem64 with [RBP - 0x4:64, el]:u32 <- low:32[RAX]
+000000b4: RAX := pad:64[mem64[RBP - 0x4:64, el]:u32]
+000000b5: RSI := pad:64[low:32[RAX]]
+000000b6: RDI := 0x400644:64
+000000b7: RAX := 0x0:64
+000000b8: RSP := RSP - 0x8:64
+000000b9: mem64 := mem64 with [RSP, el]:u64 <- 0x4005B9:64
+000000ba: call @sub_400410 with return %000000bb
+
+000000bb: 
+000000bc: RSP := RBP
+000000bd: RBP := mem64[RSP, el]:u64
+000000be: RSP := RSP + 0x8:64
+000000bf: ra_333 := mem64[RSP, el]:u64
+000000c0: RSP := RSP + 0x8:64
+000000c1: return ra_333
 ```
