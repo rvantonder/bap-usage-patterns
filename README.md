@@ -119,14 +119,23 @@ end;
 
 #### Manipulating IR
 
+###### Builder example
+
+In BAP, you can manipulate `Term`s in the IR in a number of ways. One of those is with `Builder`, a constrained mutable state similar to `Buffer` for OCaml. It operates over the `Term`s of an IR, by letting you build up a `Program`, `Sub`, or `Blk`. Things become clearer with an example. Let's say you want to manipulate the `main` function with the IR. Namely, create a copy and add a concrete argument. The following snippet does this:
+
+* By using `Builder`, we create an empty subroutine, and copy all the blocks over with `add_blk`
+* After copying the blocks, add an argument called `argc` of size 32 bits, and value 1
+
 ```ocaml
   let program = Project.program project in
   (** This copies each block in [sub], and then adds an argument
       [argc] of size 32 bits, and value of 1 *)
   let copy_and_add_arg sub =
     let builder = Sub.Builder.create ~name:("new_"^(Sub.name sub)) () in
+    (** Copy all blks *)
     Seq.iter (Term.enum blk_t sub) ~f:(fun blk ->
         Sub.Builder.add_blk builder blk);
+    (** Add the argument *)
     let var = Var.create "argc" reg32_t in
     let exp = Bil.int (Word.of_int ~width:32 1) in
     let arg0 = Arg.create ~intent:In var exp in
@@ -136,8 +145,7 @@ end;
 
   (** Let's create an empty sub, in case building a new one fails for some
       reason (e.g. main does not exist) *)
-  let empty_sub = Sub.Builder.create
-      () |> Sub.Builder.result in
+  let empty_sub = Sub.Builder.create () |> Sub.Builder.result in
 
   let new_sub =
     Option.(Term.find sub_t program Tid.(!"@main") >>= fun main_sub ->
@@ -148,6 +156,7 @@ end;
   Format.printf "%a\n" Sub.pp new_sub;
 ```
 
+Result:
 ```
 000000ad: argc :: in u32 = 0x1:32
 00000032:
