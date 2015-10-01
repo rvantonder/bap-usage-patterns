@@ -199,3 +199,21 @@ let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
 000000c0: RSP := RSP + 0x8:64
 000000c1: return ra_333
 ```
+
+#### Scratchpad
+
+> Find all subroutines that call the subroutine `src`
+
+```ocaml
+  let subs =
+    Graphlib.depth_first_search (module Graphlib.Callgraph)
+      ~enter_node:(fun i n s ->
+          let sub = Graphlib.Callgraph.Node.label n |> Util.sub_of_tid in
+          match sub with
+          | Some sub ->
+            if List.exists (Util.calls_of_sub sub) ~f:(fun call_tid ->
+                Tid.name call_tid = src) then
+              n :: s
+            else s
+          | None -> s) ~init:[] callgraph
+```
