@@ -160,7 +160,7 @@ Result: (`test/example`)
 ```
 00000161: sub new_main(argc)
 00000160: argc :: in u32 = 0x1:32
-000000a0: 
+000000a0:
 000000a1: RSP := RSP - 0x8:64
 000000a2: mem64 := mem64 with [RSP, el]:u64 <- RBP
 000000a3: RBP := RSP
@@ -181,7 +181,7 @@ let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
 000000b0: mem64 := mem64 with [RSP, el]:u64 <- 0x4005A2:64
 000000b1: call @f with return %000000b2
 
-000000b2: 
+000000b2:
 000000b3: mem64 := mem64 with [RBP - 0x4:64, el]:u32 <- low:32[RAX]
 000000b4: RAX := pad:64[mem64[RBP - 0x4:64, el]:u32]
 000000b5: RSI := pad:64[low:32[RAX]]
@@ -191,7 +191,7 @@ let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
 000000b9: mem64 := mem64 with [RSP, el]:u64 <- 0x4005B9:64
 000000ba: call @sub_400410 with return %000000bb
 
-000000bb: 
+000000bb:
 000000bc: RSP := RBP
 000000bd: RBP := mem64[RSP, el]:u64
 000000be: RSP := RSP + 0x8:64
@@ -199,6 +199,142 @@ let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
 000000c0: RSP := RSP + 0x8:64
 000000c1: return ra_333
 ```
+
+###### Mapping and changing Terms
+
+In contrast to building up a subroutine, it is also possible to change IR terms selectively with the aid of a mapping function. Let's imagine that we wanted to clobber every assignment to `RSP` with the value `0x41414141` in the program. So, the following def
+
+`000000a1: RSP := RSP - 0x8:64`<br>
+would become
+`000000a1: RSP := 0x41414141:64`<br>
+
+Here's how we do that:
+
+```ocaml
+  let program = Project.program project in
+  let modified_program =
+    Term.map sub_t program ~f:(fun sub ->
+        Term.map blk_t sub ~f:(fun blk ->
+            Term.map def_t blk ~f:(fun def ->
+                if Def.lhs def = AMD64.CPU.rsp then
+                  Def.with_rhs def (Bil.int (Word.of_int ~width:64 0x41414141))
+                else
+                  def)))
+  in
+
+  (** Print the resulting program *)
+  Format.printf "%a\n" Program.pp modified_program;
+```
+
+Note that we successively map across sub terms, starting with the program. The API supports many other useful functions across terms, such as `filter`, `filter_map`, `find`, `update`, and `remove` to name a few.
+
+#### Manipulating BIL
+
+Because BIL follows an AST representation, working with BIL necessitates the use of visitor the pattern in BAP. Visitors for BIL are extremely powerful, but also harder to grasp, depending on your familiarity with the O in Ocaml.
+
+###### Syntax
+
+######## Simple visitor
+
+A simple visitor is given below. It simply visits each BIL statement in a list of BIL statments, and prints the current statement.
+
+```ocaml
+  let visit_each_stmt bil_stmts =
+    (object inherit [unit] Bil.visitor
+      method! enter_stmt stmt state =
+        Format.printf "Visiting %s\n" (Stmt.to_string stmt)
+    end)#run bil_stmts ()
+```
+
+A few things of note:
+* This makes use of the `Bil.visitor` class. (This is important because there are other classes too).
+* `[unit]` indicates the type of the state that we are passing along every time we enter a statement. This corresponds with the variable `state` for `enter_stmt`.
+* The `#run` invocation operates over a `stmt list` by default.
+* We pass unit `()` as the initial state.
+* The return type of enter_stmt is that of our state: `unit`.
+
+######## Simple visitor
+
+This visitor collects all direct jumps for a list of BIL statements (this example can be found in the API documentation):
+
+```ocaml
+    (object inherit [Word.t list] Bil.visitor
+      method! enter_int x state = if in_jmp then x :: state else state
+    end)#run bil []
+```
+
+Note:
+* This visitor uses a `Word.t list` as user-supplied state which stores jumps.
+* Our callback triggers every time we enter an int; essentially, a constant
+* We determine that this constant is a jump target with the `in_jmp` predicate: this state is implicitly included with each visit. See the `class state` in the API for other information passed along visits.
+
+######## Simple mapper
+
+We just addressed `class 'a visitor`, where `'a` is our inherited user-supplied state. But there's also `class mapper`. `class mapper` doesn't carry any user-supplied state with it. With mapper, you can transform the BIL statements and expressions in the AST.
+
+Let's transform every binary operation with some constant offset to an offset of `- 0x41`. For instance:
+
+`RSP := RSP - 0x8:64`
+becomes
+`RSP := RSP - 0x41:64`
+
+Specifically, if the second operand of the binary operator `+` or `-` is a constant, we rewrite it to be `0x41`.
+
+Here's the code:
+
+```ocaml
+  let offset_41_mapper bil_stmts =
+    (object inherit Bil.mapper
+      method! map_binop operator operand1 operand2 =
+        let original_expression =
+          Bil.binop operator operand1 operand2 in
+        match operator with
+        | Bil.PLUS | Bil.MINUS ->
+          (match operand2 with
+           | Bil.Int offset ->
+             let new_operand2 = Bil.int (Word.of_int ~width:64 0x41) in
+             Bil.binop operator operand1 new_operand2
+           | _ -> original_expression)
+        | _ -> original_expression
+    end)#run bil_stmts in
+```
+
+Note:
+* We reconstruct the `original_expression` and return that when our cases for substituting `0x41` are not matched.
+* We pattern-match against the BIL operators `PLUS` and `MINUS`, and then pattern match the second operand against `Bil.Int`.
+* We use `Bil.mapper`
+
+###### Visitor flexibility
+
+Examples to come, but note that:
+* We can have multiple visit methods inside our visitor object
+* We can visit any particular part of the BIL AST by replacing `#run` in previous examples with `#enter_stmt`, `#enter_exp`, `#enter_binop`, and so on. Note that `#run` accepts a `stmt list` by default.
+* We can iterate, map, fold (and many more!) over BIL statements. For example, we can supply `Bil.fold` with a visitor object which is run over the AST with our own `init` state.
+* We can create our own subclassing visitor, i.e. we don't have to use `class 'a visitor` or `class mapper`. For instance, we can pass our own implicit state a long with a custom visitor (and still allow anyone else to define a user-supplied state variable). Here's some quick syntax for defining your own visitor:
+
+```ocaml
+class ['a] visitor : object
+  inherit ['a * int list ] Bil.visitor
+end
+```
+
+Now you can write something like
+
+```ocaml
+  let custom_visit bil_stmts =
+    (object inherit [string] custom_visitor
+      method! enter_stmt stmt state =
+        Format.printf "Visiting %s\n" (Stmt.to_string stmt);
+        ("user-defined",[1;2;3])
+    end)#run bil_stmts ("user-defined",[1;2;3])
+```
+
+Note:
+* Our visitor inherits only the type of our user-defined state: a string.
+* The `int list` is passed along any visitor we create using `custom_vistor`. This
+is useful if the `int list` state is changed by another function as we fold over BIL
+(for instance, for tracking depth in the AST, we might create a `depth_visitor` that
+maintains a depth of the current traversal).
 
 #### Scratchpad
 
@@ -216,4 +352,25 @@ let acc_115 = (acc_115 >> 0x2:64) ^ acc_115 in
               n :: s
             else s
           | None -> s) ~init:[] callgraph
+```
+
+Go through this example:
+
+```
+      {[Bil.([
+          v := src lsr i32 1;
+          r := src;
+          s := i32 31;
+          while_ (var v <> i32 0) [
+            r := var r lsl i32 1;
+            r := var r lor (var v land i32 1);
+            v := var v lsr i32 1;
+            s := var s - i32 1;
+          ];
+          dst := var r lsl var s;
+        ])]}
+      where [i32] is defined as
+      [let i32 x = Bil.int (Word.of_int ~width:32 x)]
+      and [v,r,s] are some variables of type [var]; and
+      [src, dst] are expressions of type [exp].
 ```
