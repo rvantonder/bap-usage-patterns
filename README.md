@@ -32,6 +32,8 @@ Option.(Term.find sub_t program Tid.(!"@main") >>= fun main_sub ->
 
 Note: `Tid.(!"@main")` looks for a function called `main`. Your program needs to be compiled with debugging symbols, or you need to use the `--use-ida` option if you what to use this notation. Alternatively, use `Tid.(!"@sub_400440")` where `400440` corresponds to the address (in hex) of your function (for example, entry point).
 
+Note: Here we use `Sub.to_cfg`, which returns a graph corresponding to `Graphlib.Ir`. Nodes of `Graphlib.Ir` are `blk`s.
+
 > What if I don't want all of the IR in my CFG, but rather nodes and edges labeled with identifiers?
 
 ```ocaml
@@ -48,7 +50,7 @@ Option.(Term.find sub_t program Tid.(!"@main") >>= fun main_sub ->
 
 <img src=/images/tid_only_graph.png height=200 /><br>
 
-Note: here we use `Sub.to_graph`, and the appropriate types for labels. See bap documentation for why you might want this instead.
+Note: here we use `Sub.to_graph`, and the appropriate types for labels: `tid`, as opposed to `blk` in the previous example. See bap documentation for why you might want this instead.
 
 ## Graph Library
 
@@ -373,4 +375,21 @@ Go through this example:
       [let i32 x = Bil.int (Word.of_int ~width:32 x)]
       and [v,r,s] are some variables of type [var]; and
       [src, dst] are expressions of type [exp].
+```
+
+Note that we can pattern-match based on multiple components of a visitor:
+
+```
+      method! enter_binop op o1 o2 state =
+        match (op,o1,o2) with
+        | (Bil.PLUS, Bil.Var v, Bil.Int off)
+        | (Bil.MINUS, Bil.Var v, Bil.Int off) ->
+          if AMD64.CPU.is_bp v then
+            let offset =
+              Word.to_int off |> ok_exn in
+            let var_name = Format.sprintf "%s_%02x" (Exp.to_string o1) offset in
+            Var.create ~tmp:false var_name reg32_t
+          else
+            state
+        | _ -> state
 ```
