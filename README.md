@@ -236,7 +236,7 @@ Because BIL follows an AST representation, working with BIL necessitates the use
 
 ###### Syntax
 
-######## Simple visitor
+###### Simple visitor
 
 A simple visitor is given below. It simply visits each BIL statement in a list of BIL statments, and prints the current statement.
 
@@ -255,7 +255,7 @@ A few things of note:
 * We pass unit `()` as the initial state.
 * The return type of enter_stmt is that of our state: `unit`.
 
-######## Simple visitor
+###### Simple visitor
 
 This visitor collects all direct jumps for a list of BIL statements (this example can be found in the API documentation):
 
@@ -270,7 +270,7 @@ Note:
 * Our callback triggers every time we enter an int; essentially, a constant
 * We determine that this constant is a jump target with the `in_jmp` predicate: this state is implicitly included with each visit. See the `class state` in the API for other information passed along visits.
 
-######## Simple mapper
+###### Simple mapper
 
 We just addressed `class 'a visitor`, where `'a` is our inherited user-supplied state. But there's also `class mapper`. `class mapper` doesn't carry any user-supplied state with it. With mapper, you can transform the BIL statements and expressions in the AST.
 
