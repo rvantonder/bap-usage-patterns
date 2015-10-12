@@ -302,6 +302,8 @@ Here's the code:
 ```
 
 Note:
+* We use `map_binop` instead of `enter_binop`.
+* No user-state is passed a long. The return type for each expression is `exp`.
 * We reconstruct the `original_expression` and return that when our cases for substituting `0x41` are not matched.
 * We pattern-match against the BIL operators `PLUS` and `MINUS`, and then pattern match the second operand against `Bil.Int`.
 * We use `Bil.mapper`
