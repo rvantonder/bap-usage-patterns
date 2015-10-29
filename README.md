@@ -81,6 +81,14 @@ Output:
 @__libc_csu_init
 ```
 
+> How can I construct arbitrary graphs?
+
+```
+  let module G = Graphlib.Int.Unit in
+  let g = Graphlib.create (module G) ~edges:[0,1,();1,1,()] () in
+  Graphlib.to_dot (module G) ~filename:"graph.dot" g
+```
+
 ## Memory
 
 > How do I print the memory of an ELF section, such as '.rodata'?
