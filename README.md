@@ -403,3 +403,48 @@ Note that we can pattern-match based on multiple components of a visitor:
             state
         | _ -> state
 ```
+
+> How can I remove back edges in a graph
+
+```
+let process (module G : Graphlib.Graph with type edge =
+Graphlib.Int.Unit.edge and type node =
+int and type t = Graphlib.Int.Unit.t) graph =
+  List.iter [0;1;2;3;4] ~f:(fun i ->
+      Format.printf "Current: %d. Succs:" i;
+      Seq.iter (G.Node.succs i graph) ~f:(fun succ ->
+          Format.printf " %d" succ);
+      Format.printf "\n"
+    )
+
+let () =
+  let module G = Graphlib.Int.Unit in
+  let g = Graphlib.create (module G)
+      ~edges:[0,1,();
+              1,2,();
+              2,3,();
+              3,4,();
+              3,1,()] () in
+
+  (** Collect back edges *)
+  let edge_set = G.Edge.Hash_set.create () in
+  Graphlib.depth_first_search (module G)
+    ~enter_edge:(fun k e _ ->
+        if k = `Back then
+          Hash_set.add edge_set e
+        else ()) ~init:() g;
+
+  (** Create view with back edges removed *)
+  let graph_view =
+    Graphlib.filtered (module G)
+      ~skip_edge:(fun e -> Hash_set.mem edge_set e) () in
+
+  Graphlib.to_dot (module G) ~filename:"normal.dot" g;
+  Graphlib.to_dot graph_view ~filename:"no_back_edges.dot" g;
+
+  Format.printf "Normal:\n";
+  process (module G) g;
+
+  Format.printf "\nWith graph view filter:\n";
+  process graph_view g
+```
