@@ -348,6 +348,81 @@ is useful if the `int list` state is changed by another function as we fold over
 (for instance, for tracking depth in the AST, we might create a `depth_visitor` that
 maintains a depth of the current traversal).
 
+## Interpreters
+
+BAP provides two default interpreters for BIL and BIR. Let's see how they can be used.
+
+Here's a BIL snippet for calculating the gcd of two numbers `a` and `b`.
+
+```ocaml
+  let bil_stmts =
+    let a = Var.create "a" reg32_t in
+    let b = Var.create "b" reg32_t in
+    let t = Var.create "t" reg32_t in
+    let i32 x = Bil.int (Word.of_int ~width:32 x) in
+    let (!) = Bil.var in
+    Bil.([
+        a := i32 9;
+        b := i32 3;
+        while_ (!a <> i32 0) [
+          t := !b;
+          b := !a mod !b;
+          a := !t
+        ];
+      ]) 
+  in ();
+```
+
+We're going to run this:
+
+```
+a := i32 9;
+b := i32 3;
+while_ (!a <> i32 0) [
+  t := !b;
+  b := !a mod !b;
+  a := !t
+]
+```
+
+using the BIL interpreter. We do this with `Stmt.eval bil_stmts (new Bili.context)`. Here's the entire snippet, which also prints the result of our run:
+
+```ocaml
+  let bil_stmts =
+    let a = Var.create "a" reg32_t in
+    let b = Var.create "b" reg32_t in
+    let t = Var.create "t" reg32_t in
+    let i32 x = Bil.int (Word.of_int ~width:32 x) in
+    let (!) = Bil.var in
+    Bil.([
+        a := i32 9;
+        b := i32 3;
+        while_ (!b <> i32 0) [
+          t := !b;
+          b := !a mod !b;
+          a := !t
+        ];
+      ]) in
+  let ctxt = Stmt.eval bil_stmts (new Bili.context) in
+  ctxt#bindings |> Seq.iter ~f:(fun (v,bil_result) ->
+      let result = Bil.Result.value bil_result in
+      match result with
+      | Bil.Imm w -> printf "Var: %a = %a\n" Var.pp v Word.pp w
+      | Bil.Mem s -> () (* Our example doesn't use memory *)
+      | Bil.Bot -> () (* Our example has no undefined results *)
+    );
+```
+
+Our results:
+
+```
+Var: a = 0x3:32
+Var: b = 0x0:32
+Var: t = 0x3:32
+```
+
+
+
 #### Scratchpad
 
 > Find all subroutines that call the subroutine `src`
@@ -366,26 +441,6 @@ maintains a depth of the current traversal).
           | None -> s) ~init:[] callgraph
 ```
 
-Go through this example:
-
-```
-      {[Bil.([
-          v := src lsr i32 1;
-          r := src;
-          s := i32 31;
-          while_ (var v <> i32 0) [
-            r := var r lsl i32 1;
-            r := var r lor (var v land i32 1);
-            v := var v lsr i32 1;
-            s := var s - i32 1;
-          ];
-          dst := var r lsl var s;
-        ])]}
-      where [i32] is defined as
-      [let i32 x = Bil.int (Word.of_int ~width:32 x)]
-      and [v,r,s] are some variables of type [var]; and
-      [src, dst] are expressions of type [exp].
-```
 
 Note that we can pattern-match based on multiple components of a visitor:
 
