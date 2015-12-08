@@ -91,7 +91,7 @@ Output:
 
 > How can I construct arbitrary graphs?
 
-```
+```ocaml
   (* [ex2-2.ml] *)
   let module G = Graphlib.Int.Unit in
   let g = Graphlib.create (module G) ~edges:[0,1,();1,1,()] () in
@@ -176,7 +176,7 @@ In BAP, you can manipulate `Term`s in the IR in a number of ways. One of those i
 ```
 
 Result: (`test/example`)
-```
+```asm
 00000161: sub new_main(argc)
 00000160: argc :: in u32 = 0x1:32
 000000a0:
@@ -249,7 +249,7 @@ Note that we successively map across sub terms, starting with the program. The A
 
 #### Manipulating BIL
 
-Because BIL follows an AST representation, working with BIL necessitates the use of visitor the pattern in BAP. Visitors for BIL are extremely powerful, but also harder to grasp, depending on your familiarity with the O in Ocaml.
+Because BIL follows an AST representation, working with BIL necessitates the use of visitor the pattern in BAP. Visitors for BIL are extremely powerful, but also harder to grasp, depending on your familiarity with the O in OCaml.
 
 ###### Simple visitor
 
@@ -391,7 +391,7 @@ Here's a BIL snippet for calculating the gcd of two numbers `a` and `b`.
 
 Note that `!` has been defined as a prefix operator that acts as a cast `var -> exp`. We're going to run this BIL code:
 
-```
+```asm
 a := i32 9;
 b := i32 3;
 while_ (!a <> i32 0) [
@@ -434,7 +434,7 @@ using the BIL interpreter. We do this with `Stmt.eval bil_stmts (new Bili.contex
 
 Our results:
 
-```
+```asm
 Var: a = 0x3:32
 Var: b = 0x0:32
 Var: t = 0x3:32
@@ -521,7 +521,7 @@ Here's the lifted BIR code of `main`:
 
 There are a few steps we need to take in order to interpret this BIR code. First, we need to initialize the registers with a blank state. There are a couple of ways to do this, but the simplest is to prepend BIR definition terms to the first block term. We can do this with a dedicated function called `prime` that primes our BIR snippet for interpretation:
 
-```
+```ocaml
 (* [ex5-2.ml] *)
 let prime project sub =
   let open Option in
@@ -542,7 +542,7 @@ let prime project sub =
 
 The start ouf our `main` subroutine will now look like this:
 
-```
+```asm
 00000051: sub main()
 00000025: 
 000000c6: SP := 0x0:32
@@ -601,7 +601,7 @@ corresponds to our `Monad.State.exec start ctxt` call.
 
 Here's the result of execution. Note how we observe the correct result in `R0` (and also `R3`).
 
-```
+```asm
 Var: CF = true
 Var: LR = 0x0:32
 Var: NF = false
