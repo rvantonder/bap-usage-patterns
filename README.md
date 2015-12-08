@@ -365,7 +365,7 @@ maintains a depth of the current traversal).
 
 ## 5. Interpreters
 
-BAP provides two default interpreters for BIL and BIR. Let's see how they can be used.
+BAP provides two default interpreters for BIL and BIR, both of which inherit the expression interpreter `Expi`. Note that there is a lot of documentation on these interfaces in [bap.mli](https://github.com/BinaryAnalysisPlatform/bap/blob/master/lib/bap/bap.mli). Here, we strive to show examples of how they can be used.
 
 #### Interpreting BIL
 
@@ -391,7 +391,7 @@ Here's a BIL snippet for calculating the gcd of two numbers `a` and `b`.
   in ();
 ```
 
-We're going to run this:
+Note that `!` has been defined as a prefix operator that acts as a cast `var -> exp`. We're going to run this BIL code:
 
 ```
 a := i32 9;
@@ -442,12 +442,16 @@ Var: b = 0x0:32
 Var: t = 0x3:32
 ```
 
+Some things to note:
+* We use the built in `Stmt.eval` to interpret the BIL code
+* In the background, `Stmt.eval` instantiates an interpreter for us, using a `Bili.context`
+* The resulting state can be accessed through `ctxt#bindings`, which contains `Bil.Result`s that can be queried
+
 #### Interpreting BIR
 
 Let's take things up a notch. Instead of interpreting a sequence of BIL instructions, we're now going to interpret BAP IR code.
 The BAP IR is the preferred representation for program analysis. Instead of writing a sequence of BIR statements, (analogous
-to the `gcd` routine in BIL from before), we are instead going to interpret the BIR generated when BAP lifts a binary. Our binary
-will be compiled to the ARM architecture. Here's the source
+to the `gcd` routine in BIL from before), we are instead going to interpret the BIR generated when BAP lifts a binary. For this example, our binary will be compiled to the ARM architecture. Here's the source:
 
 ```c
 // fib.c
@@ -621,6 +625,25 @@ Var: VF = false
 Var: ZF = false
 Var: base_469 = 0xFFFFFFFC:32
 ```
+
+The `run-of-fib.sh` script shows this in action on three architectures: `ARM`, `x86`, and `x64`.
+
+Some things to note:
+* Here we use `Monad.State.exec` as opposed to `Stmt.eval` in the previous example. We supply it with our instantiated interpreter and context
+* The final state can be accessed with `#bindings` in the same way as the previous example.
+* There are some useful methods such as `#trace` which will give us the trace of term tids that were executed (see documentation for more)
+
+#### Customizing Interpreters
+
+
+
+
+
+
+
+
+
+
 
 
 
