@@ -16,7 +16,6 @@ open Format
 (** Not typically interested in the result of interpretation,
 but the process (hence hooks) *)
 
-(*
 class context program = object(self : 's)
   inherit Biri.context program as super
 end
@@ -27,14 +26,9 @@ class ['a] debugger = object(self)
 
    method! enter_term cls t =
      let tid = Term.tid t in
-     printf "Enter: %a\n" Tid.pp tid;
+     printf "Enter: %a\n%!" Tid.pp tid;
      super#enter_term cls t
-     (*SM.get () >>= fun c ->
-     c#visit_term tid...
-       super#enter_term cls t*)
-
-end*)
-
+end
 
 let prime project sub =
   let open Option in
@@ -59,14 +53,16 @@ let main () =
   begin
     match main_sub with
     | Some sub -> (* printf "%a\n" Sub.pp sub;*)
-      let ctxt = new Biri.context program in
-      let interpreter = new biri in
+      (*let ctxt = new Biri.context program in*)
+      let ctxt = new context program in
+      (*let interpreter = new biri in*)
+      let interpreter = new debugger in
       let sub' = prime project sub in
       printf "%a\n" Sub.pp sub';
       let start = interpreter#eval_sub sub' in
       let r,res = Monad.State.run start ctxt in
-      List.iter (res#trace |> List.rev) ~f:(fun tid ->
-          printf "Tid: %a\n" Tid.pp tid);
+      (*List.iter (res#trace |> List.rev) ~f:(fun tid ->
+          printf "Tid: %a\n" Tid.pp tid);*)
       res#bindings |> Seq.iter ~f:(fun (v,bil_result) ->
           let result = Bil.Result.value bil_result in
           match result with
