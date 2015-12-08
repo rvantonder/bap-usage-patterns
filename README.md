@@ -251,8 +251,6 @@ Note that we successively map across sub terms, starting with the program. The A
 
 Because BIL follows an AST representation, working with BIL necessitates the use of visitor the pattern in BAP. Visitors for BIL are extremely powerful, but also harder to grasp, depending on your familiarity with the O in Ocaml.
 
-###### Syntax
-
 ###### Simple visitor
 
 A simple visitor is given below. It simply visits each BIL statement in a list of BIL statments, and prints the current statement.
