@@ -1,6 +1,12 @@
 # Bap Usage Patterns
 
-You can substitute the following patterns in `driver.ml` and run it with `run-on-example.sh` (after installing bap).
+All of the following examples can be run with:
+
+`./run-on-example [file-name]`
+
+For example:
+
+`./run-on-example ex1-1.ml`
 
 ## 1. Graphs and Dot output
 

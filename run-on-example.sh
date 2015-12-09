@@ -13,5 +13,5 @@ case $1 in
   ex*)
   ocaml examples/$1 test/example;;
   *)
-  printf "Invalid example, try again."
+  printf "Invalid example, try again.\n"
 esac
