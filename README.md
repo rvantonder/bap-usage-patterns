@@ -128,7 +128,7 @@ Output:
       Format.printf "%s(%a)@.%a@." (Value.tagname x) Value.pp x Memory.pp mem);
 ```
 
-## 4. IR
+## 4. BAP IR
 
 > How do I output the BAP IR of a specific function (a.k.a. subroutine)?
 
@@ -142,6 +142,8 @@ Output:
 ```
 
 #### Manipulating IR
+
+> How do I manipulate the BAP IR?
 
 ###### Builder example
 
@@ -253,7 +255,10 @@ Here's how we do that:
 
 Note that we successively map across sub terms, starting with the program. The API supports many other useful functions across terms, such as `filter`, `filter_map`, `find`, `update`, and `remove` to name a few.
 
+
 #### Manipulating BIL
+
+> How do I manipulate BIL?
 
 Because BIL follows an AST representation, working with BIL necessitates the use of visitor the pattern in BAP. Visitors for BIL are extremely powerful, but also harder to grasp, depending on your familiarity with the O in OCaml.
 
@@ -369,6 +374,8 @@ maintains a depth of the current traversal).
 
 ## 5. Interpreters
 
+> BAP has interpreters, what can I do with them?
+
 BAP provides two default interpreters for BIL and BIR, both of which inherit the expression interpreter `Expi`. Note that there is a lot of documentation on these interfaces in [bap.mli](https://github.com/BinaryAnalysisPlatform/bap/blob/master/lib/bap/bap.mli). Here, we strive to show examples of how they can be used.
 
 #### Interpreting BIL
@@ -391,7 +398,7 @@ Here's a BIL snippet for calculating the gcd of two numbers `a` and `b`.
           b := !a mod !b;
           a := !t
         ];
-      ]) 
+      ])
   in ();
 ```
 
@@ -476,7 +483,7 @@ Here's the lifted BIR code of `main`:
 ```asm
 # bap --no-byteweight -dbir test/fib-arm
 00000051: sub main()
-00000025: 
+00000025:
 00000026: mem := mem with [SP - 0x4:32, el]:u32 <- R11
 00000027: SP := SP - 0x4:32
 00000028: R11 := SP
@@ -491,7 +498,7 @@ Here's the lifted BIR code of `main`:
 00000031: mem := mem with [R11 - 0x10:32, el]:u32 <- R3
 00000032: goto %00000033
 
-00000033: 
+00000033:
 00000034: R2 := mem[R11 - 0x10:32, el]:u32
 00000035: R3 := mem[R11 - 0xC:32, el]:u32
 00000036: CF := R3 <= R2
@@ -501,7 +508,7 @@ Here's the lifted BIR code of `main`:
 0000003a: when ZF | (NF <> VF) goto %0000003c
 0000003b: goto %00000049
 
-0000003c: 
+0000003c:
 0000003d: R2 := mem[R11 - 0x18:32, el]:u32
 0000003e: R3 := mem[R11 - 0x14:32, el]:u32
 0000003f: R3 := R2 + R3
@@ -515,7 +522,7 @@ Here's the lifted BIR code of `main`:
 00000047: mem := mem with [R11 - 0x10:32, el]:u32 <- R3
 00000048: goto %00000033
 
-00000049: 
+00000049:
 0000004a: R3 := mem[R11 - 0x14:32, el]:u32
 0000004b: R0 := R3
 0000004c: SP := R11
@@ -550,7 +557,7 @@ The start ouf our `main` subroutine will now look like this:
 
 ```asm
 00000051: sub main()
-00000025: 
+00000025:
 000000c6: SP := 0x0:32
 000000c5: R9 := 0x0:32
 000000c4: R8 := 0x0:32
@@ -639,3 +646,120 @@ Some things to note:
 
 #### Customizing Interpreters
 
+Here's a very simple example of how one can customize an interpreter. We'll use the BIR interpreter for our example.
+
+####### Debugger v1
+
+Suppose we want to print a debug message when we enter a term, just before it is evaluated by the interpreter. We'll do this with a dedicated `debugger` interpreter which inherits the base `biri` interpreter. We declare it as follows:
+
+```ocaml
+(* [ex5-3.ml] *)
+class ['a] debugger = object(self)
+   constraint 'a = #context
+   inherit ['a] biri as super
+
+   method! enter_term cls t =
+     let tid = Term.tid t in
+     printf "Enter: %a\n%!" Tid.pp tid;
+     super#enter_term cls t
+end
+```
+
+Our interpreter will use a custom context (which simply inherits the default `Biri` context):
+
+```ocaml
+(* [ex5-3.ml] *)
+class context program = object(self : 's)
+  inherit Biri.context program as super
+end
+```
+
+Now we just set our interpreter to `debugger` and run as before:
+
+```ocaml
+(* [ex5-3.ml] *)
+  let program = Project.program project in
+  let main_sub = Term.find sub_t program Tid.(!"@main") in
+  begin
+    match main_sub with
+    | Some sub ->
+      let ctxt = new context program in
+      let interpreter = new debugger in
+      let sub' = prime project sub in
+      printf "%a\n%!" Sub.pp sub';
+      let start = interpreter#eval_sub sub' in
+      let res = Monad.State.exec start ctxt in
+
+      (*List.iter (res#trace |> List.rev) ~f:(fun tid ->
+          printf "Tid: %a\n" Tid.pp tid);*)
+
+      res#bindings |> Seq.iter ~f:(fun (v,bil_result) ->
+          let result = Bil.Result.value bil_result in
+          match result with
+          | Bil.Imm w -> printf "Var: %a = %a\n" Var.pp v Word.pp w
+          | Bil.Mem s -> ()
+          | Bil.Bot -> ());
+    | None -> ()
+  end;
+```
+
+And we observe the printed statements:
+
+```asm
+Entered: 00000051
+Entered: 00000025
+Entered: 000000c6
+Entered: 000000c5
+...
+```
+
+####### Debugger v2
+
+Let's modify our debugger to print a message whenever a `save` or `load` operation occurs to our `storage` type (which acts as memory) during execution. Here we show how the `storage` type can be customized.
+
+Note that such a message could *also* be be printed based on the IR term being evaluated (e.g., a `Store` or `Load` statement) with the corresponding callback `method! load` and ``method! store` in the interpreter class. In fact, that's probably more sensible. But I want to demonstrate the interface for declaring your own storage class.
+
+We'll satisfy the `storage` interface's two methods, and include our debug message as follows:
+
+```ocaml
+(* [ex5-4.ml] *)
+class memory : Bil.storage = object(self : 's)
+  val storage = Bitvector.Map.empty
+
+  method save x u =
+    printf "Saving %a -> %a\n%!" Word.pp x Word.pp u;
+    {< storage = Map.add storage ~key:x ~data:u >}
+
+  method load x =
+    printf "Loading %a\n%!" Word.pp x;
+    Map.find storage x
+end
+```
+
+In our debugger, we supply our `storage` class to `method! empty`:
+
+```ocaml
+(* [ex5-4.ml] *)
+class ['a] debugger = object(self)
+   constraint 'a = #context
+   inherit ['a] biri as super
+
+   method! empty = new memory
+
+   method! enter_term cls t =
+     let tid = Term.tid t in
+     printf "Entered: %a\n%!" Tid.pp tid;
+     super#enter_term cls t
+end
+```
+
+Everything else remains as before. When we run this, we now see our debug messages:
+
+```asm
+...
+Saving 0xFFFFFFFC:32 -> 0x0:8
+Saving 0xFFFFFFFD:32 -> 0x0:8
+Saving 0xFFFFFFFE:32 -> 0x0:8
+Saving 0xFFFFFFFF:32 -> 0x0:8
+...
+```
