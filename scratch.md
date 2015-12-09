@@ -1,5 +1,26 @@
 #### Scratchpad
 
+State monad usage:
+
+For BAP interfaces in the interpreter of the form:
+
+`method store : Bil.storage -> addr -> word -> 'a r`, the return type needs to be `Bil.result`. Like so:
+
+```
+method! store s a w =
+  super#store s a w >>= fun r -> SM.return r
+```
+
+If we want to change the context, we extract it like so:
+
+```
+method! store s a w =
+  super#store s a w >>= fun r ->
+  SM.get () >>= fun ctxt ->
+  SM.put ctxt >>= fun () ->
+  SM.return r
+```
+
 More things to include that still need examples.
 
 > Find all subroutines that call the subroutine `src`
