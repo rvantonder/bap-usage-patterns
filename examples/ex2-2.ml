@@ -10,7 +10,7 @@ let main () =
   (* [ex2-2.ml] *)
   let module G = Graphlib.Int.Unit in
   let g = Graphlib.create (module G) ~edges:[0,1,();1,1,()] () in
-  Graphlib.to_dot (module G) ~filename:"graph.dot" g
+  Graphlib.to_dot (module G) ~filename:"graph.dot" g;
 
   return ()
 
