@@ -101,3 +101,12 @@ let () =
   Format.printf "\nWith graph view filter:\n";
   process graph_view g
 ```
+
+(* Data Writers *)
+
+```
+let to_bytes = ... in
+let writer = Data.Writer.create ~to_bytes () in
+Addr.add_writer ~ver:"0.1" ~desc:"better printer" "dpr";
+Addr.set_default_printer "dpr"
+```

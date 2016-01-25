@@ -10,10 +10,10 @@ let main () =
   (* [ex3-1.ml] *)
   let find_section_by_name name =
     let memory = Project.memory project in
-    Memmap.to_sequence memory |> Seq.find_map ~f:(fun (m,v) ->
-        Option.(Value.get Image.section v >>= fun n ->
+    Memmap.to_sequence memory |> Seq.find_map ~f:(fun (m,x) ->
+        Option.(Value.get Image.section x >>= fun n ->
                 Option.some_if (n = name) m)) in
-  (match find_section_by_name ".rodata" with
+  (match find_section_by_name ".got" with
    | Some mem -> Format.printf "%a" Memory.pp mem
    | None -> Format.printf "No memory for this section\n");
 
